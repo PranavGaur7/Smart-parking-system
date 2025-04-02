@@ -128,7 +128,6 @@ node server.js
 ![image](https://github.com/user-attachments/assets/86a38b66-cabc-463d-b95e-0298504c46a3)
 ![image](https://github.com/user-attachments/assets/b866a348-701d-4e67-9c43-d123bfe5ddbf)
 
-> Ensure that all images are uploaded into an `images` folder within your repository for proper rendering in GitHub README files.
 
 ## Future Enhancements
 - Mobile app integration for booking and notifications.
