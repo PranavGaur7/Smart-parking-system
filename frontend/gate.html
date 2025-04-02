@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Parking - Gate Access</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+        .options {
+            display: flex;
+            justify-content: space-around;
+            margin: 30px 0;
+        }
+        .option-button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1.1em;
+            width: 45%;
+        }
+        .option-button:hover {
+            background-color: #2980b9;
+        }
+        .form-section {
+            display: none;
+            margin-top: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+        button {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #27ae60;
+        }
+        .message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        #status {
+            font-size: 1.2em;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #e8f4f8;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Parking Gate Access</h1>
+        
+        <div id="status">Vehicle detected. Please select an option.</div>
+        
+        <div class="options">
+            <button class="option-button" id="prebookedBtn">I have prebooked</button>
+            <button class="option-button" id="notPrebookedBtn">I have not prebooked</button>
+        </div>
+        
+        <div id="otpSection" class="form-section">
+            <div class="form-group">
+                <label for="otp">Enter your OTP:</label>
+                <input type="text" id="otp" placeholder="Enter OTP">
+            </div>
+            <button id="verifyOtpBtn">Verify OTP</button>
+        </div>
+        
+        <div id="message" class="message" style="display: none;"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Button event listeners
+            document.getElementById('prebookedBtn').addEventListener('click', showOtpSection);
+            document.getElementById('notPrebookedBtn').addEventListener('click', checkNonPrebookedEntry);
+            document.getElementById('verifyOtpBtn').addEventListener('click', verifyOtp);
+        });
+        
+        function showOtpSection() {
+            document.getElementById('otpSection').style.display = 'block';
+            document.getElementById('status').textContent = 'Please enter your OTP';
+            document.querySelector('.options').style.display = 'none';
+        }
+        
+        function checkNonPrebookedEntry() {
+            fetch('http://localhost:3000/api/check-availability')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.available) {
+                        showMessage('Slot available. Opening gate...', 'success');
+                        document.querySelector('.options').style.display = 'none';
+                        
+                        // Send command to open gate
+                        fetch('http://localhost:3000/api/open-gate', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ prebooked: false })
+                        });
+                    } else {
+                        showMessage('Sorry, no slots available.', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking availability:', error);
+                    showMessage('An error occurred. Please try again.', 'error');
+                });
+        }
+        
+        function verifyOtp() {
+            const otp = document.getElementById('otp').value;
+            
+            if (!otp) {
+                showMessage('Please enter your OTP', 'error');
+                return;
+            }
+            
+            fetch('http://localhost:3000/api/verify-otp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ otp })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.valid) {
+                    showMessage('OTP verified. Opening gate...', 'success');
+                    document.getElementById('otpSection').style.display = 'none';
+                    
+                    // Send command to open gate
+                    fetch('http://localhost:3000/api/open-gate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ prebooked: true })
+                    });
+                } else {
+                    showMessage('Invalid OTP. Please try again.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error verifying OTP:', error);
+                showMessage('An error occurred. Please try again.', 'error');
+            });
+        }
+        
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

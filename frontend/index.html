@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Parking - Prebooking</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .slot-info {
+            text-align: center;
+            font-size: 1.2em;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #e8f4f8;
+            border-radius: 5px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="email"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1em;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Smart Parking Prebooking</h1>
+        
+        <div class="slot-info">
+            Available Slots: <span id="availableSlots">Loading...</span>
+        </div>
+        
+        <div id="bookingForm">
+            <div class="form-group">
+                <label for="email">Email Address:</label>
+                <input type="email" id="email" placeholder="Enter your email" required>
+            </div>
+            
+            <button id="bookButton">Book a Parking Slot</button>
+        </div>
+        
+        <div id="message" class="message" style="display: none;"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Fetch available slots
+            console.log("Fetching");
+            
+            fetchAvailableSlots();
+            
+            // Book slot button event
+            document.getElementById('bookButton').addEventListener('click', bookSlot);
+        });
+        
+        function fetchAvailableSlots() {
+            fetch('http://localhost:3000/api/slots')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('availableSlots').textContent = data.availableSlots;
+                    
+                    // Disable booking if no slots available
+                    if (data.availableSlots <= 0) {
+                        document.getElementById('bookButton').disabled = true;
+                        document.getElementById('bookButton').textContent = 'No Slots Available';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching slots:', error);
+                    document.getElementById('availableSlots').textContent = 'Error loading';
+                });
+        }
+        
+        function bookSlot() {
+            const email = document.getElementById('email').value;
+            
+            if (!email || !validateEmail(email)) {
+                showMessage('Please enter a valid email address', 'error');
+                return;
+            }
+            
+            fetch('http://localhost:3000/api/book', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(`Booking successful! An OTP has been sent to your email. Your OTP is: ${data.otp}`, 'success');
+                    document.getElementById('bookingForm').style.display = 'none';
+                    fetchAvailableSlots();
+                } else {
+                    showMessage(data.message || 'Booking failed. Please try again.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error booking slot:', error);
+                showMessage('An error occurred. Please try again later.', 'error');
+            });
+        }
+        
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+        
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
